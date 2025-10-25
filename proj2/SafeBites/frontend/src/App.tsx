@@ -1,22 +1,27 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Welcome from './pages/Welcome';
-import SignUp from './pages/SignUp';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import './App.css';
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import Login from "./pages/Login.tsx";
+import Signup from "./pages/Signup.tsx";
+import UserProfile from "./pages/UserProfile.tsx";
+import RestaurantCreation from "./pages/RestaurantCreation.tsx";
+import "./App.css";
 
 function App() {
   return (
-    <BrowserRouter>
+    <Router>
+      <nav className="p-4 bg-gray-200 flex justify-center gap-4">
+        <Link to="/">Login</Link>
+        <Link to="/signup">Signup</Link>
+        <Link to="/profile">User Profile</Link>
+        <Link to="/restaurant">Restaurant Creation</Link>
+      </nav>
+
       <Routes>
-        <Route path="/" element={<Welcome />} />
-        <Route path="/signup" element={<SignUp />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        {/* Add other routes as you create the pages */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="/" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+        <Route path="/profile" element={<UserProfile />} />
+        <Route path="/restaurant" element={<RestaurantCreation />} />
       </Routes>
-    </BrowserRouter>
+    </Router>
   );
 }
 
