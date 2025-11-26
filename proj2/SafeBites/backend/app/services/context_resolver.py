@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
+llm = ChatOpenAI(model="gpt-4o-mini",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
 
 def resolve_context(state):
     """
@@ -62,13 +62,22 @@ def resolve_context(state):
 
     User query: {query}
 
-    Previous Context : 
+    Previous Context :
     {context}
 
-    If the user query refers to something previously mentioned (e.g., "that", "those", "it"),
-    resolve what it refers to using the most relevant prior results.
+    **Task**: Rewrite the query to be self-contained by incorporating relevant context.
 
-    Return only the rewritten query text.
+    **Rules**:
+    1. **DO NOT rewrite user preference queries**: If the query asks about the USER'S OWN preferences, allergens, or account info (e.g., "what am I allergic to?", "what are my preferences?"), return it EXACTLY as-is without any changes.
+    2. If the user query refers to something previously mentioned (e.g., "that", "those", "it"), resolve what it refers to.
+    3. If the user query is a **refinement** (adds a constraint without mentioning a dish type):
+       - Example: Previous query: "show me pizzas", Current query: "under $20" → Rewrite to: "show me pizzas under $20"
+       - Example: Previous query: "burgers", Current query: "gluten-free" → Rewrite to: "show me gluten-free burgers"
+       - Example: Previous query: "Italian dishes", Current query: "less than 500 calories" → Rewrite to: "show me Italian dishes less than 500 calories"
+    4. If the user query is a **new request** (mentions a new dish type or topic), use it as-is.
+    5. If user allergens are in context, you don't need to add them to the query (they'll be handled separately).
+
+    Return ONLY the rewritten query text, nothing else.
     """)
         
         response = llm.invoke(prompt_template.format_messages(
@@ -78,7 +87,7 @@ def resolve_context(state):
         logger.debug("Rewritten Query:", response.content)
         # return {"query": response.content.strip()}
 
-        rewritten_query = response.content.strip().strip()
+        rewritten_query = response.content.strip()
 
         if not rewritten_query:
             raise GenericException("LLM returned an empty rewritten query.")

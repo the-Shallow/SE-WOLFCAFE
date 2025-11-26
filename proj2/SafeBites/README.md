@@ -122,6 +122,24 @@ Backend available at http://localhost:8000
 ```
 cd frontend
 npm install
+```
+
+### Configure Environment Variables
+The frontend uses environment variables to configure the backend API URL. Create a `.env.local` file:
+```
+cp .env.example .env.local
+```
+
+For local development, the default configuration in `.env.development` points to `http://localhost:8000`.
+For production builds, `.env.production` points to the production backend URL.
+
+You can override these by creating `.env.local` with:
+```
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+### Run Development Server
+```
 npm run dev
 Frontend runs on http://localhost:5173
 ```

@@ -2,6 +2,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { vi } from 'vitest';
 import SignUp from '../pages/SignUp';
+import { API_ENDPOINTS } from '../config/api';
 
 // Mock useNavigate
 const mockNavigate = vi.fn();
@@ -105,7 +106,7 @@ describe('SignUp', () => {
     
     // Verify API call
     const fetchCall = (global.fetch as any).mock.calls[0];
-    expect(fetchCall[0]).toBe('https://safebites-yu1o.onrender.com/users/signup');
+    expect(fetchCall[0]).toBe(API_ENDPOINTS.users.signup);
     expect(fetchCall[1].method).toBe('POST');
     
     // Verify navigation to login

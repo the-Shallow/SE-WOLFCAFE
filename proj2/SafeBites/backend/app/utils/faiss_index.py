@@ -46,7 +46,7 @@ Format the response in JSON:
 - type: "requires_menu_data" or "general_knowledge"
 
 """)
-    llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"))
+    llm = ChatOpenAI(model="gpt-4o-mini",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"))
     response = llm.invoke(prompt.format_messages(query=query))
     print(f"LLM Response: {response.content}")
     try:
@@ -69,7 +69,7 @@ Query: {query}
 Format the response in JSON:
 - "answer": your answer to the query
                                               """)
-    llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"))
+    llm = ChatOpenAI(model="gpt-4o-mini",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"))
     response = llm.invoke(prompt.format_messages(query=query))
     print(f"LLM Response: {response.content}")
     try:
@@ -93,9 +93,8 @@ def handle_food_item_query(query, restaurant_id=None):
             "description": dish.get("description", "N/A"),
             "price": dish.get("price", "N/A"),
             "ingredients": dish.get("ingredients", []),
-            "serving_size": dish.get("serving_size", "N/A"),
             "availability": dish.get("availability", "N/A"),
-            "allergens": [a['allergen'] for a in dish.get("inferred_allergens", [])],
+            "allergens": [a['allergen'] for a in dish.get("explicit_allergens", [])],
             "nutrition_info": dish.get("nutrition_info", {})
         })
     print(f"Food item query results: {results}")
@@ -123,7 +122,6 @@ def get_dish_info(query, restaurant_id=None):
     Description: {dish.get('description', 'N/A')}
     Price: {dish.get('price', 'N/A')}
     Ingredients: {', '.join(dish.get('ingredients', []))}
-    Serving Size: {dish.get('serving_size', 'N/A')}
     Availability: {dish.get('availability', 'N/A')}
     Allergens: {', '.join([a for a in dish.get('allergens', [])])}
     Nutrition: {dish.get('nutrition_info', {})}
@@ -143,7 +141,7 @@ You are a food information assistant.
 
     Dish Data: {context}
     """)
-    llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"))
+    llm = ChatOpenAI(model="gpt-4o-mini",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"))
     response = llm.invoke(prompt.format_messages(query=query,context=context))
     print(f"LLM Response: {response.content}")
     try:
@@ -157,7 +155,7 @@ You are a food information assistant.
 
 
 def extract_query_intent(query):
-    llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"))
+    llm = ChatOpenAI(model="gpt-4o-mini",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"))
     intent_prompt = ChatPromptTemplate.from_template("""
     You are an intent extraction expert for food-related natural language queries.
 
@@ -210,9 +208,8 @@ def create_faiss_index():
 Description : {dish["description"]}
 Price : {dish["price"]}
 Ingredients : {', '.join(dish.get("ingredients",[]))}
-Serving Size : {dish.get("serving_size","")}
 Availability : {dish.get("availability",True)}
-Allergens : {', '.join([a["allergen"] for a in dish.get("inferred_allergens",[])])}
+Allergens : {', '.join([a["allergen"] for a in dish.get("explicit_allergens",[])])}
 Nutrtion : {dish.get("nutrition_info",{})}
 """
             texts.append(text)

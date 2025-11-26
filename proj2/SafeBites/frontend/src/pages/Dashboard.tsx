@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_ENDPOINTS } from '../config/api';
 import './Dashboard.css';
 import Home from './Home';
 import SearchChat from './SearchChat';
@@ -33,7 +34,7 @@ function Dashboard() {
         return;
       }
 
-      const response = await fetch('https://safebites-yu1o.onrender.com/users/me', {
+      const response = await fetch(API_ENDPOINTS.users.me, {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }

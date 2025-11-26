@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
+llm = ChatOpenAI(model="gpt-4o-mini",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
 
 def derive_dish_info_intent(query):
     """
@@ -32,10 +32,11 @@ def derive_dish_info_intent(query):
 
     This function uses an LLM to analyze the query and classify it as either:
     - "requires_menu_data" (when query involves dishes, ingredients, allergens, or calories)
-    - "general_knowledge" (when query is conceptual or unrelated to a restaurant’s menu)
+    - "general_knowledge" (when query is conceptual or unrelated to a restaurant's menu,
+      OR when the context already contains sufficient information to answer)
 
     Args:
-        query (str): The user's natural language question.
+        query (str): The user's natural language question (may include context).
 
     Returns:
         dict: JSON-like dictionary containing:
@@ -45,28 +46,47 @@ def derive_dish_info_intent(query):
     logging.debug(f"Deriving intent for query: {query}")
 
     prompt = ChatPromptTemplate.from_template("""
-                                              
         You are an intent analyzer for a food assistant.
 
-        Given a query, decide whether the answer requires fetching restaurant menu data.
+        Given a query (which may include additional context), decide whether you need to fetch restaurant menu data or if you can answer from the provided context.
 
         Possible outputs:
-        - "requires_menu_data" → if the question is about dishes, ingredients, allergens, calories, or menu items that might exist in the restaurant data.
-        - "general_knowledge" → if the question is conceptual and doesn’t depend on any restaurant data.
+        - "requires_menu_data" → if the question is about dishes, ingredients, allergens, or calories AND the context does not contain the answer.
+        - "general_knowledge" → if (1) the question is conceptual/general, OR (2) the "Additional context" section already contains sufficient information to answer the query.
+
+        **CRITICAL**: If the query includes an "Additional context:" section that contains the answer to the user's question, return "general_knowledge".
 
         Query: {query}
 
-        Format the response in JSON:
-        - type: "requires_menu_data" or "general_knowledge"
+        CRITICAL: Your response must ONLY be valid JSON. Do not include any explanation, markdown formatting, or additional text.
 
+        Output format (JSON only):
+        {{"type": "requires_menu_data"}} OR {{"type": "general_knowledge"}}
+
+        Remember: Output ONLY the JSON object, nothing else.
     """)
     response = llm.invoke(prompt.format_messages(query=query))
     logging.debug(f"LLM Intent Response: {response.content}")
     try:
-        intent_json = json.loads(response.content)
+        # Check if response is empty
+        if not response.content or not response.content.strip():
+            logger.warning(f"Empty LLM response for derive_dish_info_intent query: {query}. Defaulting to general_knowledge.")
+            return IntentResponse(type="general_knowledge")
+
+        content = response.content.strip()
+
+        # Try to extract JSON from markdown code blocks if present
+        if content.startswith("```"):
+            content = content.replace("```json", "").replace("```", "").strip()
+
+        intent_json = json.loads(content)
         return IntentResponse(**intent_json)
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error in derive_dish_info_intent. Response: {response.content[:500]}. Error: {str(e)}")
+        logger.warning("Falling back to general_knowledge due to JSON parse error")
+        return IntentResponse(type="general_knowledge")
     except Exception as e:
-        logging.error(str(e))
+        logging.error(f"Error in derive_dish_info_intent: {str(e)}")
         raise GenericException(f"Unexpected error: {str(e)}")
 
 
@@ -82,19 +102,38 @@ def handle_general_knowledge(query):
     """
     logging.debug(f"Handling general knowledge query: {query}")
     prompt = ChatPromptTemplate.from_template("""
-        You are a food assistant. Answer the following query using general food knowledge only. 
+        You are a food assistant. Answer the following query using general food knowledge only.
         Do NOT assume restaurant-specific information unless explicitly mentioned.
         Query: {query}
-                                                    
-        Format the response in JSON:
-        - "answer": your answer to the query
+
+        CRITICAL: Your response must ONLY be valid JSON. Do not include any explanation, markdown formatting, or additional text.
+
+        Output format (JSON only):
+        {{"answer": "your answer to the query"}}
+
+        Remember: Output ONLY the JSON object, nothing else.
     """)
     response = llm.invoke(prompt.format_messages(query=query))
     logging.debug(f"LLM Response: {response.content}")
     try:
-        answer_json = json.loads(response.content)
+        # Check if response is empty
+        if not response.content or not response.content.strip():
+            logger.warning(f"Empty LLM response for general knowledge query: {query}. Returning error message.")
+            return GeneralKnowledgeResponse(answer="I apologize, but I couldn't generate a response. Please try again.")
+
+        content = response.content.strip()
+
+        # Try to extract JSON from markdown code blocks if present
+        if content.startswith("```"):
+            content = content.replace("```json", "").replace("```", "").strip()
+
+        answer_json = json.loads(content)
         return GeneralKnowledgeResponse(**answer_json)
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error in handle_general_knowledge. Response: {response.content[:500]}. Error: {str(e)}")
+        return GeneralKnowledgeResponse(answer=f"I understand you're asking: {query}. However, I encountered an error processing the response. Please try rephrasing your question.")
     except Exception as e:
+        logger.error(f"Error in handle_general_knowledge: {str(e)}")
         raise GenericException(str(e))
 
 def handle_food_item_query(query, restaurant_id=None):
@@ -127,10 +166,10 @@ def handle_food_item_query(query, restaurant_id=None):
             description=dish["description"],
             price=dish["price"],
             ingredients=dish["ingredients"],
-            serving_size=dish["serving_size"],
-            availability=dish["availaibility"],
-            allergens=[a["allergen"] for a in dish["inferred_allergens"]],
-            nutrition_facts=dish["nutrition_facts"]
+            serving_size=dish.get("serving_size"),
+            availability=dish.get("availability", True),
+            allergens=[a["allergen"] for a in dish.get("explicit_allergens", [])],
+            nutrition_facts=dish.get("nutrition_facts", {})
         ))
     logging.debug(f"Food item query results: {results}")
     return results
@@ -227,8 +266,8 @@ def get_dish_info(state):
             f"Description : {d.description}\n"
             f"Price : {d.price}\n"
             f"Ingredients : {', '.join(d.ingredients or [])}\n"
-            f"Serving Size: {d.serving_size}\n"
-            f"Availibility: {d.availibility}\n"
+            f"Serving Size: {d.serving_size or 'N/A'}\n"
+            f"Availability: {d.availability}\n"
             f"Allergens : {', '.join(d.allergens or [])}\n"
             f"Nutrition : {d.nutrition_facts}\n"
             for d in dishes
@@ -248,12 +287,34 @@ def get_dish_info(state):
         """)
         response = llm.invoke(prompt.format_messages(query=query,context=context))
         logging.debug(f"LLM Response: {response.content}")
-        
+
         try:
-            response_json = json.loads(response.content)
+            # Check if response is empty
+            if not response.content or not response.content.strip():
+                logger.warning(f"Empty LLM response for dish info query: {query}")
+                results[query] = DishInfoResponse(
+                    dish_name=None,
+                    requested_info="No response generated",
+                    source_data=[]
+                )
+                continue
+
+            # Try to extract JSON from markdown code blocks if present
+            content = response.content.strip()
+            if content.startswith("```"):
+                content = content.replace("```json", "").replace("```", "").strip()
+
+            response_json = json.loads(content)
             results[query] = DishInfoResponse(**response_json)
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error in get_dish_info. Response: {response.content[:500]}. Error: {str(e)}")
+            results[query] = DishInfoResponse(
+                dish_name=None,
+                requested_info="Could not parse LLM Response",
+                source_data=[]
+            )
         except Exception as e:
-            logger.error(str(e))
+            logger.error(f"Error parsing dish info response: {str(e)}")
             results[query] = DishInfoResponse(
                 dish_name=None,
                 requested_info="Could not parse LLM Response",

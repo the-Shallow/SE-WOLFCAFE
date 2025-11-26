@@ -10,7 +10,7 @@ import logging
 from dotenv import load_dotenv
 from typing import List
 from ..flow.state import ChatState
-from ..models.responder_model import QueryResponse, DishResult, InfoResult, FinalResponse
+from ..models.responder_model import QueryResponse, DishResult, InfoResult, PreferenceResult, FinalResponse
 
 load_dotenv()
 
@@ -23,7 +23,8 @@ def format_final_response(state:ChatState):
     This function collects results from different sources in the chat state:
     - Menu search results (`menu_results`)
     - Dish information results (`info_results`)
-    - Gibberish or unrecognized queries (`query_parts["gibberish"]`)
+    - User preference results (`preference_results`)
+    - Irrelevant or unrecognized queries (`query_parts["irrelevant"]`)
 
     It combines all results into a structured `FinalResponse` object.
 
@@ -57,10 +58,22 @@ def format_final_response(state:ChatState):
                 responses.append(QueryResponse(
                     query=query,
                     type="menu_search",
-                    result=[DishResult(**dish) for dish in dishes]
+                    result=[DishResult(
+                        _id=dish.dish_id,
+                        restaurant_id=state.restaurant_id,
+                        name=dish.dish_name,
+                        description=dish.description,
+                        price=dish.price,
+                        ingredients=dish.ingredients or [],
+                        inferred_allergens=[],
+                        explicit_allergens=dish.allergens or [],
+                        nutrition_facts=dish.nutrition_facts,
+                        availability=dish.availability,
+                        serving_size=dish.serving_size
+                    ) for dish in dishes]
                 ))
 
-        if state.info_results.info_results:
+        if state.info_results and state.info_results.info_results:
             for query, info in state.info_results.info_results.items():
                 logger.debug(f"Printing Info results for query {query} : {info}")
                 responses.append(QueryResponse(
@@ -69,12 +82,21 @@ def format_final_response(state:ChatState):
                     result=InfoResult(**info.model_dump())
                 ))
 
-        if state.query_parts and state.query_parts.get("gibberish"):
-            for query in state.query_parts["gibberish"]:
+        if state.preference_results and state.preference_results.preference_results:
+            for query, pref in state.preference_results.preference_results.items():
+                logger.debug(f"Printing Preference results for query {query} : {pref}")
                 responses.append(QueryResponse(
                     query=query,
-                    type="gibberish",
-                    result={"message":"Sorry, I couldn't understand your query.Pleas rephrase it."}
+                    type="user_preferences",
+                    result=PreferenceResult(**pref.model_dump())
+                ))
+
+        if state.query_parts and state.query_parts.get("irrelevant"):
+            for query in state.query_parts["irrelevant"]:
+                responses.append(QueryResponse(
+                    query=query,
+                    type="irrelevant",
+                    result={"message":"Sorry, I couldn't understand your query. Please rephrase it."}
                 ))
 
         logger.debug(f"Final formatted responses: {responses}")

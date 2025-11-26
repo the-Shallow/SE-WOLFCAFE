@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { API_ENDPOINTS } from '../config/api';
 import './AddRestaurant.css';
 
 function AddRestaurant() {
@@ -96,8 +97,7 @@ function AddRestaurant() {
   console.log(pair[0] + ':', pair[1]);
 }
       console.log('Submitting restaurant:', {...formData, location, menuCsvName: menuCsv.name});
-      const response = await fetch('https://safebites-yu1o.onrender.com/restaurants', {
-      
+      const response = await fetch(API_ENDPOINTS.restaurants.base, {
         method: 'POST',
         body: apiFormData,
       });

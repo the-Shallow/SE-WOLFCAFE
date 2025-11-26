@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../config/api';
 import './Home.css';
 import RestaurantMenu from './RestaurantMenu';
-
-const API_BASE_URL = 'https://safebites-yu1o.onrender.com';
 
 interface Restaurant {
   _id: string;
