@@ -60,14 +60,14 @@ for r in restaurants:
         dish_id += 1
 
 
-with open("./backend/seed_data/restaurants.json","w") as f:
+with open("./seed_datarestaurants.json","w") as f:
     json.dump(restaurants,f,indent=2)
-with open("./backend/seed_data/dishes.json","w") as f:
+with open("./seed_datadishes.json","w") as f:
     json.dump(dishes,f,indent=2)
 
 
 def generate_refined_res_data(dish):
-    llm = ChatOpenAI(model="gpt-5", api_key=os.environ.get("OPENAI_KEY"))
+    llm = ChatOpenAI(model="gpt-4o-mini", api_key=os.environ.get("OPENAI_KEY"))
     prompt_template = ChatPromptTemplate.from_template("""
 You are an allergen annotator for a restaurant dish database.
 
@@ -148,7 +148,7 @@ for i in range(len(dishes)):
         break
 # refined_dishes = [generate_refined_res_data(dishes[i]) for i in range(len(dishes))]
 
-with open("./backend/seed_data/dishes_refined.json","w") as f:
+with open("./seed_datadishes_refined.json","w") as f:
     json.dump(refined_dishes,f,indent=2)
 
 logger.info("Refined dish data with inferred ingredients and allergens")

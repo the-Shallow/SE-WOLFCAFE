@@ -15,11 +15,12 @@ Key Components:
   final response.
 """
 from typing import Any, Dict, List, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel
 from ..models.dish_info_model import DishInfoResult, DishInfoResponse, DishData
 from ..models.intent_model import IntentExtractionResult
 from ..models.restaurant_model import MenuResultResponse
+from ..models.user_preferences_model import UserPreferencesResult
 
 class ChatState(BaseModel):
     """
@@ -62,9 +63,12 @@ class ChatState(BaseModel):
             Data structure holding results retrieved from the menu retrieval
             service (restaurant or dish listings).
 
-        info_results (Optional[DishInfoResult]): 
+        info_results (Optional[DishInfoResult]):
             Contains detailed dish-level information returned by the dish
             information service.
+
+        preference_results (Optional[UserPreferencesResult]):
+            Contains responses to user preference queries like "what am I allergic to?"
 
         data (Dict[str, Any]): 
             A general-purpose container for intermediate computation results,
@@ -95,7 +99,8 @@ class ChatState(BaseModel):
     menu_results: Optional[MenuResultResponse] = None
     # info_results: Optional[Dict[str,Dict[str, Any]]] = None
     info_results: Optional[DishInfoResult] = None
+    preference_results: Optional[UserPreferencesResult] = None
     data : Dict[str,Any] = {}
     response : str = ""
     status : str = "pending"
-    timestamp : str = datetime.utcnow().isoformat()
+    timestamp : str = datetime.now(timezone.utc).isoformat()

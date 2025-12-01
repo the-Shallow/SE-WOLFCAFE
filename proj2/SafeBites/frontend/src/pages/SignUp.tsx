@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { API_ENDPOINTS } from '../config/api';
 import './SignUp.css';
 
 function SignUp() {
@@ -51,7 +52,7 @@ function SignUp() {
         setIsSubmitting(true);
 
         try {
-            const response = await fetch('https://safebites-yu1o.onrender.com/users/signup', {
+            const response = await fetch(API_ENDPOINTS.users.signup, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

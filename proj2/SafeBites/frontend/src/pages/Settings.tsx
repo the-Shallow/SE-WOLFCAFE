@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { API_ENDPOINTS } from '../config/api';
 import './Settings.css';
 
 function Settings() {
@@ -37,7 +38,7 @@ function Settings() {
         return;
       }
 
-      const response = await fetch('https://safebites-yu1o.onrender.com/users/me', {
+      const response = await fetch(API_ENDPOINTS.users.me, {
         headers: {
           'Authorization': `Bearer ${authToken || 'token'}`
         }
@@ -120,7 +121,7 @@ function Settings() {
     try {
       const authToken = localStorage.getItem('authToken');
       
-      const response = await fetch('https://safebites-yu1o.onrender.com/users/me', {
+      const response = await fetch(API_ENDPOINTS.users.me, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',

@@ -46,10 +46,10 @@ def get_menu_items(state):
                 description=hit.dish["description"],
                 price=hit.dish["price"],
                 ingredients=hit.dish["ingredients"],
-                serving_size=hit.dish["serving_size"],
-                availability=hit.dish["availaibility"],
-                allergens=[a["allergen"] for a in hit.dish["inferred_allergens"]],
-                nutrition_facts=hit.dish["nutrition_facts"]
+                serving_size=hit.dish.get("serving_size"),
+                availability=hit.dish.get("availability", True),
+                allergens=[a["allergen"] for a in hit.dish.get("explicit_allergens", [])],
+                nutrition_facts=hit.dish.get("nutrition_facts", {})
             ) for hit in hits]
 
             if not dish_results:
