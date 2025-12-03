@@ -13,6 +13,45 @@
   text-align: center;
 }
 
+/* ===== SEARCH RESULTS HEADER ===== */
+.search-results-header {
+  background-color: #f0f7ff;
+  padding: 1.5rem;
+  border-radius: 12px;
+  margin-bottom: 2rem;
+  text-align: center;
+  border: 2px solid #4CAF50;
+}
+
+.search-results-header .page-title {
+  margin-bottom: 0.5rem;
+  color: #2c5f2d;
+}
+
+.search-results-count {
+  color: #666;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.clear-search-btn {
+  padding: 0.75rem 1.5rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.2s;
+}
+
+.clear-search-btn:hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+}
+
 /* ===== FILTER SECTION ===== */
 .filter-section {
   margin-bottom: 2rem;

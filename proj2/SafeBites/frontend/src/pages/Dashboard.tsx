@@ -1,20 +1,34 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { API_ENDPOINTS } from '../config/api';
-import './Dashboard.css';
-import Home from './Home';
-import SearchChat from './SearchChat';
-import Settings from './Settings';
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation, Link } from "react-router-dom";
+import { API_ENDPOINTS } from "../config/api";
+import "./Dashboard.css";
+import Home from "./Home";
+import SearchChat from "./SearchChat";
+import Settings from "./Settings";
+
+interface Restaurant {
+  _id: string;
+  name: string;
+  location: string;
+  cuisine: string[];
+  rating: number;
+}
+
+interface LocationState {
+  searchResults?: Restaurant[];
+  searchTerm?: string;
+}
 
 function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState('home');
+  const [currentPage, setCurrentPage] = useState("home");
 
   // User data from API
-  const [username, setUsername] = useState('');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState("");
+  const [name, setName] = useState("");
   const [allergies, setAllergies] = useState<string[]>([]);
   const [isLoadingUser, setIsLoadingUser] = useState(true);
 
@@ -23,40 +37,49 @@ function Dashboard() {
     fetchUserData();
   }, []);
 
+  // Handle search results from navigation state
+  useEffect(() => {
+    const state = location.state as LocationState;
+    if (state?.searchResults) {
+      // If there are search results, navigate to home tab
+      setCurrentPage("home");
+    }
+  }, [location.state]);
+
   const fetchUserData = async () => {
     try {
-      const authToken = localStorage.getItem('authToken');
-      const storedUsername = localStorage.getItem('username');
+      const authToken = localStorage.getItem("authToken");
+      const storedUsername = localStorage.getItem("username");
 
       if (!authToken) {
         // Not logged in, redirect to login
-        navigate('/login');
+        navigate("/login");
         return;
       }
 
       const response = await fetch(API_ENDPOINTS.users.me, {
         headers: {
-          'Authorization': `Bearer ${authToken}`
-        }
+          Authorization: `Bearer ${authToken}`,
+        },
       });
 
       if (!response.ok) {
-        throw new Error('Failed to fetch user data');
+        throw new Error("Failed to fetch user data");
       }
 
       const userData = await response.json();
-      console.log('Dashboard - User data:', userData);
-      
-      setUsername(userData.username || storedUsername || 'User');
-      setName(userData.name || 'User');
+      console.log("Dashboard - User data:", userData);
+
+      setUsername(userData.username || storedUsername || "User");
+      setName(userData.name || "User");
       setAllergies(userData.allergen_preferences || []);
     } catch (error) {
-      console.error('Dashboard - Error fetching user data:', error);
+      console.error("Dashboard - Error fetching user data:", error);
       // Use fallback data from localStorage
-      const storedUsername = localStorage.getItem('username');
+      const storedUsername = localStorage.getItem("username");
       if (storedUsername) {
         setUsername(storedUsername);
-        setName('User');
+        setName("User");
       }
     } finally {
       setIsLoadingUser(false);
@@ -65,18 +88,25 @@ function Dashboard() {
 
   const handleLogout = () => {
     // Clear auth data
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('username');
-    navigate('/login');
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("username");
+    navigate("/login");
   };
 
   const renderContent = () => {
-    switch(currentPage) {
-      case 'home':
-        return <Home />;
-      case 'search-chat':
+    const state = location.state as LocationState;
+
+    switch (currentPage) {
+      case "home":
+        return (
+          <Home
+            searchResults={state?.searchResults}
+            searchTerm={state?.searchTerm}
+          />
+        );
+      case "search-chat":
         return <SearchChat />;
-      case 'settings':
+      case "settings":
         return <Settings />;
       default:
         return <Home />;
@@ -89,22 +119,32 @@ function Dashboard() {
       <header className="dashboard-header">
         {/* Left: Logo and Name */}
         <div className="header-left">
-          <div className="logo">
-            <img src="/wolfLogo.png" alt="SafeBites Logo" className="logo-img" />
-            <h1>SafeBites</h1>
-          </div>
+          <Link to="/">
+            <div className="logo">
+              <img
+                src="/wolfLogo.png"
+                alt="SafeBites Logo"
+                className="logo-img"
+              />
+              <h1>SafeBites</h1>
+            </div>
+          </Link>
         </div>
 
         {/* Right: Profile Icon */}
         <div className="header-right">
           <div className="profile-container">
-            <button 
+            <button
               className="profile-btn"
               onClick={() => setIsProfileOpen(!isProfileOpen)}
             >
-              <img src="/icons/hugeicons_male.png" alt="Profile" className="profile-icon" />
+              <img
+                src="/icons/hugeicons_male.png"
+                alt="Profile"
+                className="profile-icon"
+              />
             </button>
-            
+
             {/* Profile Dropdown */}
             {isProfileOpen && (
               <div className="profile-dropdown">
@@ -133,11 +173,8 @@ function Dashboard() {
                     <p className="profile-no-allergies">No allergies set</p>
                   </div>
                 )}
-                
-                <button 
-                  className="btn-logout"
-                  onClick={handleLogout}
-                >
+
+                <button className="btn-logout" onClick={handleLogout}>
                   Logout
                 </button>
               </div>
@@ -148,8 +185,8 @@ function Dashboard() {
 
       <div className="dashboard-body">
         {/* Sidebar */}
-        <aside className={`sidebar ${isSidebarOpen ? 'open' : 'closed'}`}>
-          <button 
+        <aside className={`sidebar ${isSidebarOpen ? "open" : "closed"}`}>
+          <button
             className="menu-toggle-btn-sidebar"
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           >
@@ -159,36 +196,60 @@ function Dashboard() {
               <span className="hamburger-icon">☰</span>
             )}
           </button>
-          
+
           <nav className="sidebar-nav">
-            <button 
-              className={`sidebar-item ${currentPage === 'home' ? 'active' : ''}`}
-              onClick={() => setCurrentPage('home')}
+            <button
+              className={`sidebar-item ${
+                currentPage === "home" ? "active" : ""
+              }`}
+              onClick={() => setCurrentPage("home")}
             >
-              <img src="/icons/hugeicons_home.png" alt="Home" className="sidebar-icon" />
+              <img
+                src="/icons/hugeicons_home.png"
+                alt="Home"
+                className="sidebar-icon"
+              />
               {isSidebarOpen && <span className="sidebar-text">Home</span>}
             </button>
 
-            <button 
-              className={`sidebar-item ${currentPage === 'search-chat' ? 'active' : ''}`}
-              onClick={() => setCurrentPage('search-chat')}
+            <button
+              className={`sidebar-item ${
+                currentPage === "search-chat" ? "active" : ""
+              }`}
+              onClick={() => setCurrentPage("search-chat")}
             >
-              <img src="/icons/hugeicon_ai_search.png" alt="Search Chat" className="sidebar-icon" />
-              {isSidebarOpen && <span className="sidebar-text">Search Chat</span>}
+              <img
+                src="/icons/hugeicon_ai_search.png"
+                alt="Search Chat"
+                className="sidebar-icon"
+              />
+              {isSidebarOpen && (
+                <span className="sidebar-text">Search Chat</span>
+              )}
             </button>
-            
-            <button 
-              className={`sidebar-item ${currentPage === 'settings' ? 'active' : ''}`}
-              onClick={() => setCurrentPage('settings')}
+
+            <button
+              className={`sidebar-item ${
+                currentPage === "settings" ? "active" : ""
+              }`}
+              onClick={() => setCurrentPage("settings")}
             >
-              <img src="/icons/hugeicons_setting.png" alt="Settings" className="sidebar-icon" />
+              <img
+                src="/icons/hugeicons_setting.png"
+                alt="Settings"
+                className="sidebar-icon"
+              />
               {isSidebarOpen && <span className="sidebar-text">Settings</span>}
             </button>
           </nav>
         </aside>
 
         {/* Main Content */}
-        <main className={`dashboard-main ${isSidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
+        <main
+          className={`dashboard-main ${
+            isSidebarOpen ? "sidebar-open" : "sidebar-closed"
+          }`}
+        >
           {renderContent()}
         </main>
       </div>

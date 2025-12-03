@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { API_BASE_URL } from '../config/api';
 import './Home.css';
 import RestaurantMenu from './RestaurantMenu';
@@ -11,7 +12,13 @@ interface Restaurant {
   rating: number;
 }
 
-function Home() {
+interface HomeProps {
+  searchResults?: Restaurant[];
+  searchTerm?: string;
+}
+
+function Home({ searchResults, searchTerm }: HomeProps) {
+  const navigate = useNavigate();
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
   const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>([]);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -20,23 +27,36 @@ function Home() {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isShowingSearchResults, setIsShowingSearchResults] = useState(false);
 
-  // Fetch restaurants from API
+  // Handle search results or fetch all restaurants
   useEffect(() => {
     const fetchRestaurants = async () => {
+      // If search results are provided, use them
+      if (searchResults) {
+        console.log('Using search results:', searchResults);
+        setRestaurants(searchResults);
+        setFilteredRestaurants(searchResults);
+        setIsShowingSearchResults(true);
+        setIsLoading(false);
+        return;
+      }
+
+      // Otherwise, fetch all restaurants from API
       try {
         setIsLoading(true);
         setError(null);
-        
+        setIsShowingSearchResults(false);
+
         const response = await fetch(`${API_BASE_URL}/restaurants/`);
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch restaurants: ${response.status}`);
         }
-        
+
         const data = await response.json();
         console.log('Fetched restaurants:', data);
-        
+
         setRestaurants(data);
         setFilteredRestaurants(data);
       } catch (err) {
@@ -48,7 +68,7 @@ function Home() {
     };
 
     fetchRestaurants();
-  }, []);
+  }, [searchResults]);
 
   // Apply sorting
   useEffect(() => {
@@ -77,9 +97,30 @@ function Home() {
     setTimeout(() => setSelectedRestaurant(null), 300);
   };
 
+  const handleClearSearch = () => {
+    // Clear search by navigating to dashboard without state
+    navigate('/dashboard', { replace: true });
+  };
+
   return (
     <div className="home-container">
-      <h1 className="page-title">Explore Restaurants</h1>
+      {isShowingSearchResults ? (
+        <div className="search-results-header">
+          <h1 className="page-title">
+            {searchTerm
+              ? `Search Results for "${searchTerm}"`
+              : 'Search Results'}
+          </h1>
+          <p className="search-results-count">
+            {filteredRestaurants.length} restaurant{filteredRestaurants.length !== 1 ? 's' : ''} found
+          </p>
+          <button className="clear-search-btn" onClick={handleClearSearch}>
+            Clear Search & View All Restaurants
+          </button>
+        </div>
+      ) : (
+        <h1 className="page-title">Explore Restaurants</h1>
+      )}
 
       {/* Filter Section */}
       <div className="filter-section">

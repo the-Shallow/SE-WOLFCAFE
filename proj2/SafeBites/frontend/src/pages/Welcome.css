@@ -39,6 +39,13 @@
   filter: brightness(0) saturate(100%) invert(20%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(95%) contrast(88%);
 }
 
+.header-buttons {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.header-signin-btn,
 .header-signup-btn {
   padding: 0.75rem 2rem;
   background-color: #ff6b6b;
@@ -51,9 +58,51 @@
   transition: background-color 0.3s ease, transform 0.2s ease;
 }
 
+.header-signin-btn:hover,
 .header-signup-btn:hover {
   background-color: #ff5252;
   transform: translateY(-2px);
+}
+
+.header-dashboard-btn {
+  padding: 0.75rem 2rem;
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.header-dashboard-btn:hover {
+  background-color: #45a049;
+  transform: translateY(-2px);
+}
+
+.header-signout-btn {
+  padding: 0.75rem 2rem;
+  background-color: #666;
+  color: white;
+  border: none;
+  border-radius: 25px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.header-signout-btn:hover {
+  background-color: #555;
+  transform: translateY(-2px);
+}
+
+.search-status {
+  margin-top: 1rem;
+  color: #666;
+  font-size: 0.9rem;
+  font-style: italic;
 }
 
 /* Hero Section with Background Image */
