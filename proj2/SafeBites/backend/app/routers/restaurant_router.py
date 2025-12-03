@@ -64,6 +64,7 @@ async def list_restaurants():
 
 class ChatQuery(BaseModel):
     query: str
+    user_id: Optional[str] = None
     restaurant_id: Optional[str] = None
 
 @router.post("/search")
@@ -71,26 +72,29 @@ async def chat_search(payload: ChatQuery):
     """
     Endpoint to handle user menu queries using the multi-agent pipeline.
     Returns a structured JSON suitable for frontend rendering.
+
+    Includes user allergen preferences in the context automatically.
     """
     try:
         query = payload.query
+        user_id = payload.user_id or "guest"  # Use "guest" if no user_id provided
         restaurant_id = payload.restaurant_id
-        # prev_state = state_store.get("sess001")
-        session_id = state_service.get_or_create_session("u123", restaurant_id)
 
-        context = state_service.rebuild_context(session_id)
+        session_id = state_service.get_or_create_session(user_id, restaurant_id)
+
+        context = state_service.rebuild_context(session_id, user_id if user_id != "guest" else None)
         logger.debug(f"Rebuilt Context: {context}")
 
         chat_graph = create_chat_graph()
-        state = ChatState(user_id="u123", session_id=session_id, restaurant_id=restaurant_id, query=query, query_parts={},
+        state = ChatState(user_id=user_id, session_id=session_id, restaurant_id=restaurant_id, query=query, query_parts={},
                           context=context,current_context="")
 
         final_state = chat_graph.invoke(state)
         logger.debug(f"Final State: {final_state}")
-        # state_store.save(state)
         state_service.save_chat_state(final_state)
         return JSONResponse(status_code=200, content=jsonable_encoder(final_state))
     except Exception as e:
+        logger.error(f"Error in chat_search: {str(e)}", exc_info=True)
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/history/{user_id}/{restaurant_id}")

@@ -31,7 +31,7 @@ dish_collection = db["dishes"]
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large",openai_api_key=os.getenv("OPENAI_KEY"))
 embedding_dim = 1536
-llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
+llm = ChatOpenAI(model="gpt-4o-mini",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
     
 
 def extract_query_intent(query):
@@ -59,6 +59,9 @@ def extract_query_intent(query):
         - DO NOT over-expand. Keep this list narrowly focused on the specific items, ingredients, or categories mentioned.
         - Avoid including loosely related or parent-category terms.
         - Only include synonyms or direct variants (e.g., "meatballs" → ["meatball", "meat balls", "polpette"], not "beef" or "meat").
+        - **IMPORTANT**: For allergen-based exclusions (e.g., "nut-free", "dairy-free", "no peanuts"),
+          DO NOT add allergens to the negative list. Leave negative list EMPTY for allergen queries.
+          Allergen filtering will be handled by a separate filter system.
 
         Return the result as **valid JSON**:
         {{"positive": [...], "negative": [...]}}
@@ -75,14 +78,40 @@ def extract_query_intent(query):
         Query: "Anything but seafood"
         Output: {{"positive": ["anything", "non-seafood", "meat and poultry", "vegetarian", "vegan"], "negative": ["seafood", "fish", "shellfish", "prawns", "crab"]}}
 
+        Example 4 (ALLERGEN QUERY):
+        Query: "List nut-free dishes"
+        Output: {{"positive": ["nut-free dishes", "dishes without nuts", "allergen-free"], "negative": []}}
+
+        Example 5 (ALLERGEN QUERY):
+        Query: "Show me dairy-free options"
+        Output: {{"positive": ["dairy-free", "lactose-free", "non-dairy", "vegan"], "negative": []}}
+
         Query: {query}
     """)
     try:
         response =  llm.invoke(intent_prompt.format_messages(query=query))
-        intents_json = json.loads(response.content)
+
+        # Log the raw response for debugging
+        logger.debug(f"Raw LLM response for query intent: {response.content}")
+
+        # Check if response is empty
+        if not response.content or not response.content.strip():
+            logger.warning(f"Empty LLM response for query intent: {query}. Using fallback.")
+            return QueryIntent(positive=[query], negative=[])
+
+        # Try to extract JSON from markdown code blocks if present
+        content = response.content.strip()
+        if content.startswith("```"):
+            content = content.replace("```json", "").replace("```", "").strip()
+
+        intents_json = json.loads(content)
         return QueryIntent(**intents_json)
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error in extract_query_intent. Response: {response.content[:500]}. Error: {str(e)}")
+        logger.warning("Falling back to default positive intent")
+        return QueryIntent(positive=[query], negative=[])
     except Exception as e:
-        logging.error(str(e))
+        logging.error(f"Error in extract_query_intent: {str(e)}")
         return QueryIntent(positive=[query], negative=[])
 
 
@@ -113,7 +142,7 @@ def create_faiss_index(json_path = "./seed_data/dishes_refined.json"):
                 Ingredients: {', '.join(dish.get("ingredients", []))}
                 Serving Size: {dish.get("serving_size", "")}
                 Availability: {dish.get("availability", True)}
-                Allergens: {', '.join([a.get("allergen", "") for a in dish.get("inferred_allergens", [])])}
+                Allergens: {', '.join([a.get("allergen", "") for a in dish.get("explicit_allergens", [])])}
                 Nutrition: {dish.get("nutrition_facts", {})}
             """
             texts.append(text)
@@ -168,9 +197,8 @@ def build_faiss_from_db(index_path:str = "faiss_index_restaurant"):
                 Description: {dish.get("description", "")}
                 Price: {dish.get("price", "N/A")}
                 Ingredients: {', '.join(dish.get("ingredients", []))}
-                Serving Size: {dish.get("serving_size", "")}
                 Availability: {dish.get("availability", True)}
-                Allergens: {', '.join([a.get("allergen", "") for a in dish.get("inferred_allergens", [])])}
+                Allergens: {', '.join([a.get("allergen", "") for a in dish.get("explicit_allergens", [])])}
                 Nutrition: {dish.get("nutrition_facts", {})}
             """
             texts.append(text.strip())
@@ -206,9 +234,8 @@ def update_faiss_index(new_dishes,index_path="faiss_index_restaurant"):
                 Description: {dish.get("description", "")}
                 Price: {dish.get("price", "N/A")}
                 Ingredients: {', '.join(dish.get("ingredients", []))}
-                Serving Size: {dish.get("serving_size", "")}
                 Availability: {dish.get("availability", True)}
-                Allergens: {', '.join([a.get("allergen", "") for a in dish.get("inferred_allergens", [])])}
+                Allergens: {', '.join([a.get("allergen", "") for a in dish.get("explicit_allergens", [])])}
                 Nutrition: {dish.get("nutrition_facts", {})}
             """
             texts.append(text)

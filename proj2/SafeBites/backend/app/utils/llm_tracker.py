@@ -6,7 +6,7 @@ from langchain.callbacks.base import BaseCallbackHandler
 logger = logging.getLogger(__name__)
 
 MODEL_COSTS = {
-    "gpt-5":{"input":1.25, "output":10.00} # per 1M token
+    "gpt-4o-mini":{"input":1.25, "output":10.00} # per 1M token
 }
 
 class LLMUsageTracker(BaseCallbackHandler):
@@ -20,7 +20,7 @@ class LLMUsageTracker(BaseCallbackHandler):
     def on_llm_end(self,response,**kwargs):
         print(response)
         latency = round((time.time() - self.start_time)*1000,2)
-        model_name = kwargs.get("invocation_params", {}).get("model", "gpt-5")
+        model_name = kwargs.get("invocation_params", {}).get("model", "gpt-4o-mini")
         usage = getattr(response, "llm_output", {}).get("token_usage", {})
         input_tokens = usage.get("prompt_tokens", 0)
         output_tokens = usage.get("completion_tokens", 0)

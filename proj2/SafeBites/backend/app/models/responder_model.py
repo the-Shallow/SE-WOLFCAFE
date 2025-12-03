@@ -92,18 +92,27 @@ class InfoResult(BaseModel):
     requested_info:Optional[Union[str, Dict[str, Any]]] = None
     source_data : Optional[List[Any]] = []
 
+class PreferenceResult(BaseModel):
+    """
+    Represents a response to user preference queries like "what am I allergic to?"
+
+    Attributes:
+        answer (str): The natural language answer to the user's preference query.
+    """
+    answer: str
+
 class QueryResponse(BaseModel):
     """
     Represents a single query-response pair for a user's input.
 
     Attributes:
-        query (str): The user’s query text.
-        type (str): The query type (e.g., 'menu', 'dish_info', 'general').
-        result (Union[List[DishResult], InfoResult, Dict[str, str]]): The resulting data or information retrieved.
+        query (str): The user's query text.
+        type (str): The query type (e.g., 'menu_search', 'dish_info', 'user_preferences', 'irrelevant').
+        result (Union[List[DishResult], InfoResult, PreferenceResult, Dict[str, str]]): The resulting data or information retrieved.
     """
     query : str
     type : str
-    result : Union[List[DishResult],InfoResult, Dict[str,str]]
+    result : Union[List[DishResult],InfoResult, PreferenceResult, Dict[str,str]]
 
 
 class FinalResponse(BaseModel):

@@ -52,6 +52,7 @@ class DishCreate(BaseModel):
             detailed `AllergenInfo` objects.
         nutrition_facts (Optional[Dict[str, Any]]): Key-value pairs describing
             nutritional properties (e.g., {"calories": 450, "protein": "30g"}).
+        serving_size (Optional[str]): The portion size or serving information.
         availability (Optional[bool]): Indicates if the dish is currently available.
     """
     restaurant_id: Optional[str] = None
@@ -61,6 +62,7 @@ class DishCreate(BaseModel):
     price: float
     explicit_allergens: Optional[List[Union[str, AllergenInfo]]] = Field(default_factory=list)
     nutrition_facts : Optional[Dict[str, Any]] = None
+    serving_size: Optional[str] = None
     availability: Optional[bool] = True
 
 class DishUpdate(BaseModel):
@@ -79,6 +81,7 @@ class DishUpdate(BaseModel):
         explicit_allergens (Optional[List[Union[str, AllergenInfo]]]): Updated
             allergens list, either as strings or `AllergenInfo` entries.
         nutrition_facts (Optional[Dict[str, Any]]): Updated nutritional data.
+        serving_size (Optional[str]): Updated serving size information.
         availability (Optional[bool]): Indicates if the dish should be marked
             available or unavailable.
     """
@@ -89,6 +92,7 @@ class DishUpdate(BaseModel):
     price: Optional[float] = None
     explicit_allergens: Optional[List[Union[str, AllergenInfo]]] = None
     nutrition_facts: Optional[Dict[str, Any]] = None
+    serving_size: Optional[str] = None
     availability: Optional[bool] = None
 
 
@@ -111,6 +115,7 @@ class DishOut(BaseModel):
         explicit_allergens (Optional[List[Union[str, AllergenInfo]]]): List of
             allergens associated with the dish.
         nutrition_facts (Optional[Dict[str, Any]]): Nutritional details.
+        serving_size (Optional[str]): The portion size or serving information.
         availability (bool): Availability flag (True if currently offered).
         safe_for_user (bool): Indicates whether the dish is safe for a user
             based on their known allergies or dietary restrictions.
@@ -123,6 +128,7 @@ class DishOut(BaseModel):
     price: float
     explicit_allergens: Optional[List[Union[str, AllergenInfo]]] = []
     nutrition_facts : Optional[Dict[str, Any]] = None
+    serving_size: Optional[str] = None
     availability: bool = True
     # ALWAYS boolean now
     safe_for_user: bool

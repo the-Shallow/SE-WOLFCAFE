@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { API_BASE_URL } from '../config/api';
 import './SearchChat.css';
-
-const API_BASE_URL = 'https://safebites-yu1o.onrender.com';
 
 interface DishResult {
   dish_id: string;
@@ -93,10 +92,14 @@ function SearchChat() {
     }
 
     try {
-      // Simple request body - just query and restaurant_id
+      // Get user_id from localStorage if logged in
+      const user_id = localStorage.getItem("authToken") || undefined;
+
+      // Request body with optional user_id
       const requestBody = {
         query: currentQuery,
-        restaurant_id: "rest_1"
+        restaurant_id: "rest_1",
+        ...(user_id && { user_id }) // Only include user_id if it exists
       };
 
       console.log('=== CHAT API REQUEST ===');
@@ -171,7 +174,7 @@ function SearchChat() {
       if (data.info_results && data.info_results.info_results) {
         console.log('Found info_results:', data.info_results);
         infoResults = data.info_results.info_results;
-        
+
         // Build response text from info results
         const infoTexts: string[] = [];
         Object.entries(infoResults).forEach(([question, info]: [string, any]) => {
@@ -190,6 +193,30 @@ function SearchChat() {
         }
       } else {
         console.log('No info_results in response');
+      }
+
+      // Extract user preference results (e.g., "what am I allergic to?")
+      if (data.preference_results && data.preference_results.preference_results) {
+        console.log('Found preference_results:', data.preference_results);
+
+        // Build response text from preference results
+        const prefTexts: string[] = [];
+        Object.entries(data.preference_results.preference_results).forEach(([question, pref]: [string, any]) => {
+          console.log(`Preference for "${question}":`, pref);
+          if (pref.answer) {
+            prefTexts.push(pref.answer);
+          }
+        });
+
+        if (prefTexts.length > 0) {
+          if (assistantContent) {
+            assistantContent += '\n\n' + prefTexts.join('\n\n');
+          } else {
+            assistantContent = prefTexts.join('\n\n');
+          }
+        }
+      } else {
+        console.log('No preference_results in response');
       }
 
       // Use the general response if available and no specific results

@@ -85,31 +85,59 @@ def get_all_chat_states(session_id:str):
     docs = list(chat_states.find({"session_id":session_id}).sort("timestamp",1))
     return docs
 
-def rebuild_context(session_id:str,last_n:int=5):
+def rebuild_context(session_id:str, user_id:str = None, last_n:int=5):
     """
     Reconstruct the conversation context from the last N chat states of a session.
+
+    Includes user allergen preferences as the first context item if user_id is provided.
 
     Parameters
     ----------
     session_id : str
         The session ID to rebuild context for.
+    user_id : str, optional
+        The user ID to fetch allergen preferences for.
     last_n : int, optional
         Number of most recent chat states to include in the context (default is 5).
 
     Returns
     -------
     list[dict]
-        List of dictionaries containing query, intents, menu results, and info results,
-        representing the reconstructed context for LLM processing.
+        List of dictionaries containing user preferences, query, intents, menu results,
+        and info results, representing the reconstructed context for LLM processing.
 
     Notes
     -----
     - Helps provide context for LLM-based query resolution.
+    - Includes user allergen preferences as the first context item.
     - Only includes the most recent `last_n` chat states to limit context size.
     """
     chat_states = get_all_chat_states(session_id)
     print(f"Chat States for context rebuild: {chat_states}")
     context = []
+
+    # Add user allergen preferences as first context item
+    if user_id:
+        from bson import ObjectId
+        users = db["users"]
+        try:
+            print(f"Fetching allergen preferences for user_id: {user_id}")
+            user_doc = users.find_one({"_id": ObjectId(user_id)})
+            print(f"User document: {user_doc}")
+            if user_doc and user_doc.get("allergen_preferences"):
+                allergen_prefs = user_doc.get("allergen_preferences", [])
+                print(f"Found allergen preferences: {allergen_prefs}")
+                context.append({
+                    "user_allergens": allergen_prefs,
+                    "message": f"User is allergic to: {', '.join(allergen_prefs)}"
+                })
+            else:
+                print(f"No allergen preferences found for user {user_id}")
+        except Exception as e:
+            print(f"Could not fetch user allergens: {e}")
+    else:
+        print("No user_id provided, skipping allergen preference fetch")
+
     for cs in chat_states[-last_n:]:
         context.append({
             "query": cs["query"],
