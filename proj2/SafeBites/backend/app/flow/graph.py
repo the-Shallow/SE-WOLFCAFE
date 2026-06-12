@@ -133,15 +133,6 @@ def after_validation(state: ChatState):
     return "repair_agent"
 
 def should_continue(state:ChatState):
-    state.data["agent_step_count"] = state.data.get("agent_step_count", 0) + 1
-
-    if state.data["agent_step_count"] > 6:
-        state.status = "success"
-        state.response = (
-            state.data.get("response") or state.data.get("response_markdown")
-        )
-        return "end"
-
     # last_ai_message = state.data.get("last_ai_message")
     # print(f"Should continue : {last_ai_message}")
     if state.status == "tool_required":
