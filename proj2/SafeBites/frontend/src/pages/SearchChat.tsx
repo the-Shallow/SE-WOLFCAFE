@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import './SearchChat.css';
 
 const API_BASE_URL = 'https://safebites-yu1o.onrender.com';
+// const API_BASE_URL = 'http://localhost:8000';
 
 interface DishResult {
   dish_id: string;
@@ -141,31 +142,36 @@ function SearchChat() {
       }
 
       // Process the response
-      let assistantContent = '';
+      let assistantContent = data.response || "I couldn't find anything";
       let menuResults: DishResult[] = [];
       let infoResults = null;
 
       console.log('=== PROCESSING RESPONSE ===');
 
-      // Extract menu results (dishes)
-      if (data.menu_results && Object.keys(data.menu_results).length > 0) {
-        console.log('Found menu_results:', data.menu_results);
-        
-        // menu_results is an object with queries as keys
-        Object.entries(data.menu_results).forEach(([query, results]: [string, any]) => {
-          console.log(`Processing query "${query}":`, results);
-          if (Array.isArray(results)) {
-            menuResults = [...menuResults, ...results];
-          }
-        });
-
-        if (menuResults.length > 0) {
-          assistantContent = `I found ${menuResults.length} dish${menuResults.length > 1 ? 'es' : ''} matching your search! 🍽️`;
-          console.log('Total dishes found:', menuResults.length);
-        }
-      } else {
-        console.log('No menu_results in response');
+      if (Array.isArray(data.cards)) {
+        menuResults = data.cards
       }
+
+      // Extract menu results (dishes)
+      // if (data.menu_results && Object.keys(data.menu_results).length > 0) {
+      //   console.log('Found menu_results:', data.menu_results);
+        
+      //   // menu_results is an object with queries as keys
+      //   Object.entries(data.menu_results).forEach(([query, results]: [string, any]) => {
+      //     console.log(`Processing query "${query}":`, results);
+      //     if (Array.isArray(results)) {
+      //       menuResults = [...menuResults, ...results];
+      //     }
+      //   });
+
+      //   if (menuResults.length > 0) {
+      //     assistantContent = `I found ${menuResults.length} dish${menuResults.length > 1 ? 'es' : ''} matching your search! 🍽️`;
+      //     console.log('Total dishes found:', menuResults.length);
+      //   }
+      // } else {
+      //   console.log('No menu_results in response');
+      // }
+      
 
       // Extract info results (answers to questions)
       if (data.info_results && data.info_results.info_results) {

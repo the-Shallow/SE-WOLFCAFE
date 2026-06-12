@@ -3,6 +3,7 @@ import './RestaurantMenu.css';
 import DishDetail from './DishDetail';
 
 const API_BASE_URL = 'https://safebites-yu1o.onrender.com';
+// const API_BASE_URL = 'http://localhost:8000';
 
 interface Dish {
   _id: string;
