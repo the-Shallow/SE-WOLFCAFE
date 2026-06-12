@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 load_dotenv()
 
-llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
+llm = ChatOpenAI(model="gpt-4o-mini",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
 
 def extract_query_intent(state):
     """

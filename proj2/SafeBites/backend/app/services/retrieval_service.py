@@ -5,11 +5,15 @@ This module handles retrieving and filtering menu items for restaurants
 based on user queries, semantic search, and applied filters.
 """
 import logging
+from langchain_core.messages import ToolMessage
+from langchain_core.tools import tool
 from ..models.dish_info_model import DishData
-from .faiss_service import semantic_retrieve_with_negation
+from .faiss_service import semantic_retrieve_with_negation, semantic_retrieve_candidates
 from .restaurant_service import apply_filters, validate_retrieved_dishes
 from ..models.exception_model import GenericException
 from ..models.restaurant_model import MenuResultResponse
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -67,3 +71,49 @@ def get_menu_items(state):
         
     # return {"menu_results":results}
     return MenuResultResponse(menu_results=results)
+
+
+
+@tool
+def retrieve_menu_candidates(query:str, restaurant_id: str | None = None, limit:int = 10):
+    """
+    Retrieve candidate dishes from a restaurant menu using semantic search.
+    Use this for broad menu queries like:
+    - show me gluten-free dishes
+    - list vegetarian options
+    - find chicken dishes
+    - show desserts
+    - high protein meals
+
+    This tool only retrieves possible candidates.
+    It does not apply strict allergy, ingredient, price, or nutrition filters.
+    """
+    hits = semantic_retrieve_candidates(query, restaurant_id=restaurant_id)
+
+    hits = hits[:limit]
+
+    results = []
+    for hit in hits:
+        dish = hit.dish
+        results.append({
+            "dish_id": str(dish.get("_id")),
+            "restaurant_id": dish.get("restaurant_id"),
+            "name": dish.get("name"),
+            "description": dish.get("description"),
+            "price": dish.get("price"),
+            "ingredients": dish.get("ingredients", []),
+            "explicit_allergens": dish.get("explicit_allergens", []),
+            "inferred_allergens": dish.get("inferred_allergens", []),
+            "nutrition_facts": dish.get("nutrition_facts", {}),
+            "availability": dish.get("availability", True),
+            "retrieval_score": hit.score,
+            "centroid_similarity": hit.centroid_similarity,
+        })
+
+    return {
+        "found": bool(results),
+        "query": query,
+        "restaurant_id": restaurant_id,
+        "count": len(results),
+        "candidates": results,
+    }

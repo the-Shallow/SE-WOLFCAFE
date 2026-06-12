@@ -128,3 +128,12 @@ class FinalResponse(BaseModel):
     status : str
     timestamp : str = Field(default_factory=lambda: datetime.utcnow().isoformat())
 
+
+class ValidationResult(BaseModel):
+    is_valid: bool
+    confidence: float = Field(ge=0, le=1)
+    # response_type: Litera
+    dish_ids: List[str] = []
+    issues: List[str] = []
+    repair_instructions: Optional[str] = None
+    corrected_response: Optional[str] = None

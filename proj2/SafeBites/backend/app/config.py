@@ -16,6 +16,7 @@ import logging
 import logging.config
 from logging.handlers import RotatingFileHandler
 from dotenv import load_dotenv
+from langsmith import utils as langsmith_utils
 
 load_dotenv()
 
@@ -92,3 +93,8 @@ def setup_logging():
     logging.config.dictConfig(logging_config)
     logger = logging.getLogger(__name__)
     logger.info("✅ Logging configured successfully.")
+
+    if os.getenv("LANGSMITH_TRACING", "").lower() == "true":
+        logger.info(f"Langsmith tracing enabled: {langsmith_utils.tracing_is_enabled()}")
+    else:
+        logger.info(f"Langsmith is disabled.")

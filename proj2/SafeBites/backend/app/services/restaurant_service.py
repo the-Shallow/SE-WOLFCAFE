@@ -17,6 +17,7 @@ from app.db import get_db
 from pymongo.errors import PyMongoError
 from langchain.prompts import ChatPromptTemplate
 from langchain_openai import ChatOpenAI
+from langchain_core.tools import tool
 import os, json
 from dotenv import load_dotenv
 from ..models.dish_model import DishCreate
@@ -31,7 +32,7 @@ db = get_db()
 tmp_dir = "/tmp"
 os.makedirs(tmp_dir, exist_ok=True)
 
-llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
+llm = ChatOpenAI(model="gpt-4o-mini",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
 
 restaurant_collection = db["restaurants"]
 
@@ -551,3 +552,98 @@ def validate_retrieved_dishes(query:str, dishes:list):
     filtered_dishes = [d for d in dishes if d.dish_id in valid_ids]
     logging.debug(f"Filtered Dishes by LLM : {filtered_dishes}")
     return filtered_dishes
+
+
+@tool
+def apply_menu_filters(
+    dishes: list,
+    excluded_ingredients: list = [],
+    excluded_allergens: list = [],
+    max_price: float | None = None,
+    min_protein: float | None = None,
+):
+    """
+    Apply deterministic filters to retrieved menu candidates.
+
+    Use this to:
+    - exclude allergens
+    - exclude ingredients
+    - filter by nutrition
+    - filter by price
+    """
+
+    filtered = []
+    
+    for dish in dishes:
+        if max_price is not None:
+            price = dish.get("price")
+
+            if price is not None and price > max_price:
+                continue
+
+        ingredients = [
+            i.lower()
+            for i in dish.get("ingredients", [])
+        ]
+
+        excluded_ingredients_lower = [
+            i.lower()
+            for i in excluded_ingredients
+        ]
+
+        if any(ex in ingredients for ex in excluded_ingredients_lower):
+            continue
+
+        allergens = []
+
+        for a in dish.get("explicit_allergens", []):
+            if isinstance(a, dict):
+                allergens.append(a.get("allergen", "").lower())
+            else:
+                allergens.append(str(a).lower())
+
+        for a in dish.get("inferred_allergens", []):
+            if isinstance(a, dict):
+                allergens.append(a.get("allergen", "").lower())
+
+        excluded_allergens_lower = {
+            a.lower()
+            for a in excluded_allergens
+        }
+
+        if any(ex in allergens for ex in excluded_allergens_lower):
+            continue
+            
+        if min_protein is not None:
+            nutrition = dish.get("nutrition_facts", {})
+            protein = dish.get("protein", {}).get("value")
+
+            if protein is None or protein < min_protein:
+                continue
+
+        filtered.append(dish)
+
+    return {
+        "count": len(filtered),
+        "results": filtered
+    }
+
+
+@tool
+def handle_irrelvant_query(query:str):
+    """
+    Use this when the user query is not related to restaurant menus,
+    dishes, ingredients, allergens, dietary preferences, price, cuisine,
+    or food ordering.
+
+    This tool should politely redirect the user back to food/menu-related help.
+    """
+    return {
+        "type": "irrelevant_query",
+        "message": (
+            "I can help with restaurant menus, dishes, ingredients, allergens, "
+            "dietary preferences, prices, and food recommendations. "
+            "Please ask me something related to the menu or food."
+        ),
+        "original_query": query
+    }

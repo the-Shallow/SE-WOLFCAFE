@@ -10,6 +10,7 @@ from bson import ObjectId
 from fastapi import HTTPException
 from bson.objectid import ObjectId
 from app.models.exception_model import NotFoundException, BadRequestException, DatabaseException, ConflictException
+from langchain_core.tools import tool
 
 
 def _to_out(doc: dict) -> dict:
@@ -207,3 +208,40 @@ def delete_dish(dish_id: str):
         raise NotFoundException(name="Dish not found")
 
     return {"detail": "deleted"}
+
+
+@tool
+def get_dish_details(dish_name: str, restaurant_id: str | None = "None"):
+    """
+        Get full dish details such as price, ingredients, allergens,
+        nutrition facts, and availability.
+    """
+    query = {
+        "name" : {"$regex": dish_name, "$options": "i"}
+    }
+
+    if restaurant_id:
+        query["restaurant_id"] = restaurant_id
+
+    dish = db.dishes.find_one(query)
+    if not dish:
+        return {
+            "found" : False,
+            "message": f"No dish found matching {dish_name}"
+        }
+    
+    dish["_id"] = str(dish["_id"])
+
+    return {
+        "found": True,
+        "dish_id": dish.get("_id"),
+        "restaurant_id": dish.get("restaurant_id"),
+        "dish_name": dish.get("name"),
+        "description": dish.get("description"),
+        "price": dish.get("price"),
+        "ingredients": dish.get("ingredients",[]),
+        "explicit_allergens": dish.get("explicit_allergens", []),
+        "inferred_allergens": dish.get("inferred_allergens", []),
+        "nutrition_facts": dish.get("nutrition_facts", {}),
+    }
+

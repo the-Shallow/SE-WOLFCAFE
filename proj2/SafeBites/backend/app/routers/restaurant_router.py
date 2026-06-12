@@ -17,7 +17,7 @@ from ..models.restaurant_model import RestaurantCreate, RestaurantUpdate, Restau
 from ..services import restaurant_service, state_service
 from pydantic import BaseModel, Field
 from typing import List, Optional, Dict, Any
-from ..services.orchestrator_service import agents
+# from ..services.orchestrator_service import agents
 from ..services.intent_service import extract_query_intent
 from ..flow.graph import create_chat_graph
 from ..flow.state import ChatState
@@ -78,18 +78,19 @@ async def chat_search(payload: ChatQuery):
         # prev_state = state_store.get("sess001")
         session_id = state_service.get_or_create_session("u123", restaurant_id)
 
-        context = state_service.rebuild_context(session_id)
-        logger.debug(f"Rebuilt Context: {context}")
+        # context = state_service.rebuild_context(session_id)
+        # logger.debug(f"Rebuilt Context: {context}")
 
         chat_graph = create_chat_graph()
         state = ChatState(user_id="u123", session_id=session_id, restaurant_id=restaurant_id, query=query, query_parts={},
-                          context=context,current_context="")
+                          context=[],current_context="")
 
         final_state = chat_graph.invoke(state)
-        logger.debug(f"Final State: {final_state}")
+        print(f"Final State: {final_state}")
+        # logger.debug(f"Final State: {final_state}")
         # state_store.save(state)
         state_service.save_chat_state(final_state)
-        return JSONResponse(status_code=200, content=jsonable_encoder(final_state))
+        return JSONResponse(status_code=200, content=jsonable_encoder(final_state.get("data", {}).get("final_output", {})))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

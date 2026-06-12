@@ -87,14 +87,14 @@ class ChatState(BaseModel):
     restaurant_id:str
     query:str
     # intents:Optional[List[Dict[str,Any]]] = None
-    intents:Optional[IntentExtractionResult] = None
+    # intents:Optional[IntentExtractionResult] = None
     context:Optional[List[Dict[str,Any]]] = None
-    current_context:Optional[str] = ""
-    query_parts: Optional[Dict[str,Any]] = None
+    # current_context:Optional[str] = ""
+    # query_parts: Optional[Dict[str,Any]] = None
     # menu_results: Optional[Dict[str,List[Dict[str, Any]]]] = None
-    menu_results: Optional[MenuResultResponse] = None
+    # menu_results: Optional[MenuResultResponse] = None
     # info_results: Optional[Dict[str,Dict[str, Any]]] = None
-    info_results: Optional[DishInfoResult] = None
+    # info_results: Optional[DishInfoResult] = None
     data : Dict[str,Any] = {}
     response : str = ""
     status : str = "pending"

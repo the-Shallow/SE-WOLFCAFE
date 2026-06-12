@@ -31,8 +31,17 @@ dish_collection = db["dishes"]
 
 embeddings = OpenAIEmbeddings(model="text-embedding-3-large",openai_api_key=os.getenv("OPENAI_KEY"))
 embedding_dim = 1536
-llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
+llm = ChatOpenAI(model="gpt-4o-mini",temperature=1,openai_api_key=os.getenv("OPENAI_KEY"),callbacks=[LLMUsageTracker()])
     
+
+_vector_store = None
+
+def get_vector_store():
+    global  _vector_store
+
+    if _vector_store is None:
+        _vector_store = FAISS.load_local("faiss_index_restaurant", embeddings, allow_dangerous_deserialization=True)
+    return _vector_store
 
 def extract_query_intent(query):
     """
@@ -181,10 +190,10 @@ def build_faiss_from_db(index_path:str = "faiss_index_restaurant"):
                 "vector_id":i
             })
 
-            vector_store = FAISS.from_texts(texts=texts,embedding = embeddings,metadatas=metadata)
-            vector_store.save_local(index_path)
+        vector_store = FAISS.from_texts(texts=texts,embedding = embeddings,metadatas=metadata)
+        vector_store.save_local(index_path)
 
-            logger.info(f"FAISS index successfully rebuilt with {len(dishes)} dishes.")
+        logger.info(f"FAISS index successfully rebuilt with {len(dishes)} dishes.")
     except Exception as e:
         logger.error(f"Failed to build faiss index: {str(e)} ")
         raise GenericException(f"FAISS rebuild failed : {str(e)}")
@@ -219,13 +228,13 @@ def update_faiss_index(new_dishes,index_path="faiss_index_restaurant"):
                 "vector_id":i
             })
 
-            if vector_store:
-                vector_store.add_texts(texts=texts, metadatas=metadata)
-            else:
-                vector_store = FAISS.from_texts(texts=texts, embedding=embeddings, metadatas=metadata)
-            
-            vector_store.save_local(index_path)
-            logging.info(f"FAISS index updated with {len(new_dishes)} dishes.")
+        if vector_store:
+            vector_store.add_texts(texts=texts, metadatas=metadata)
+        else:
+            vector_store = FAISS.from_texts(texts=texts, embedding=embeddings, metadatas=metadata)
+        
+        vector_store.save_local(index_path)
+        logging.info(f"FAISS index updated with {len(new_dishes)} dishes.")
     except Exception as e:
         logger.error(f"Failed to update FAISS index : {str(e)}")
 
@@ -249,17 +258,26 @@ def search_dishes(query, restaurant_id=None,top_k=20,threshold=0.8):
 
     filter_dict = {"restaurant_id":restaurant_id} if restaurant_id else None
     results = vector_store.similarity_search_with_score(query, k=top_k, filter=filter_dict)
+    
+    dish_ids = [res.metadata["dish_id"] for res, score in results]
+
+    dishes = {
+        dish["_id"]: dish
+        for dish in dish_collection.find({"_id": {"$in": dish_ids}})
+    }
+    
     structured_res = []
 
     for res,score in results:
-        if score >= threshold:
-            dish = dish_collection.find_one({"_id":res.metadata["dish_id"]})
-            if dish:
-                structured_res.append(DishHit(
-                    dish = dish,
-                    score = score,
-                    embedding = vector_store.index.reconstruct(res.metadata["vector_id"])
-                ))
+        dish = dishes.get(res.metadata["dish_id"])
+        # if score >= threshold and dish:
+            # dish = dish_collection.find_one({"_id":res.metadata["dish_id"]})
+            # if dish:
+        structured_res.append(DishHit(
+            dish = dish,
+            score = score,
+            embedding = vector_store.index.reconstruct(res.metadata["vector_id"])
+        ))
     return structured_res
 
 
@@ -347,6 +365,43 @@ def semantic_retrieve_with_negation(query,restaurant_id=None):
 
     return refined
 
+
+def semantic_retrieve_candidates(query, restaurant_id=None):
+    # intents = extract_query_intent(query)
+
+    # pos_hits = []
+
+    # for p in intents.positive:
+    #     pos_hits.extend(
+    #         search_dishes(
+    #             p, restaurant_id, top_k=20, threshold=0.0
+    #         )
+    #     )
+
+    # seen = set()
+    # unique_hits = []
+
+    # for hit in pos_hits:
+    #     dish_id = hit.dish["_id"]
+    #     if dish_id not in seen:
+    #         unique_hits.append(hit)
+    #         seen.add(dish_id)
+
+    # dish_embeddings = {
+    #     hit.dish["_id"]: hit.embedding
+    #     for hit in unique_hits
+    #     if hit.embedding is not None
+    # }
+
+    # refined = refine_with_centroid(
+    #     unique_hits,
+    #     intents.positive,
+    #     dish_embeddings
+    # )
+
+    hits = search_dishes(query, restaurant_id = restaurant_id, top_k=20, threshold=0.0)
+
+    return hits
 
 
 # if __name__ == "__main__":
