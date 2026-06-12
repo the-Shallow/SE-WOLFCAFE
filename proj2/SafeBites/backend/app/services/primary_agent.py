@@ -17,6 +17,7 @@ llm = ChatOpenAI(model="gpt-5",temperature=1,openai_api_key=os.getenv("OPENAI_KE
 
 tools = [get_dish_details, retrieve_menu_candidates, apply_menu_filters, handle_irrelvant_query]
 llm_with_tools = llm.bind_tools(tools)
+llm_without_tools = llm
 
 SYSTEM_PROMPT = """
 You are SafeBites, an agentic food assistant.
@@ -81,12 +82,7 @@ Decision rules:
 def primary_agent(state:ChatState):
     state.data["agent_step_count"] = state.data.get("agent_step_count", 0) + 1
 
-    if state.data["agent_step_count"] > 6:
-        state.status = "success"
-        state.response = (
-            state.data.get("response") or state.data.get("response_markdown")
-        )
-        return state
+    force_final = state.data["agent_step_count"] > 6
 
     messages = [SystemMessage(content=SYSTEM_PROMPT),
                 HumanMessage(content=state.query)]
@@ -99,11 +95,19 @@ def primary_agent(state:ChatState):
         messages.append(last_ai_message)
         messages.extend(tool_messages)
 
-    response = llm_with_tools.invoke(messages)
+    if force_final:
+        messages.insert(0,
+                        SystemMessage(content="""You must now produce the final user-facing answer.
+Do not call tools.
+Use only the tool results already present in the conversation."""))
+        response = llm_without_tools.invoke(messages)
+    else:
+        response = llm_with_tools.invoke(messages)
     # print(f"Response from LLM with tools", response)
     if response.tool_calls:
         state.data["last_ai_message"] = response
         state.status = "tool_required"
+        state.response = response.content or ""
         return state
     
     state.response = response.content
